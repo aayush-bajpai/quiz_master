@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        VENV_PATH = "/home/ubuntu/quiz_master/venv"
+        VENV_PATH = "/home/ubuntu/venv"
         PROJECT_DIR = "/home/ubuntu/quiz_master"
         PATH = "${VENV_PATH}/bin:$PATH"
     }
