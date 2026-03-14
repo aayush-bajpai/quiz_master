@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        # Use virtualenv inside Jenkins workspace for isolation
+        // # Use virtualenv inside Jenkins workspace for isolation
         PATH = "venv/bin:$PATH"
     }
     stages {
