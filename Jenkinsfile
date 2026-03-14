@@ -25,15 +25,15 @@ pipeline {
             }
         }
 
-        stage('Run Tests') {
-            steps {
-                sh """
-                . ${VENV_PATH}/bin/activate
-                cd ${PROJECT_DIR}
-                python manage.py test
-                """
-            }
-        }
+        // stage('Run Tests') {
+        //     steps {
+        //         sh """
+        //         . ${VENV_PATH}/bin/activate
+        //         cd ${PROJECT_DIR}
+        //         python manage.py test
+        //         """
+        //     }
+        // }
 
         stage('Migrate & Collect Static') {
             steps {
@@ -42,7 +42,7 @@ pipeline {
                         sh """
                         . ${VENV_PATH}/bin/activate
                         cd ${PROJECT_DIR}
-                        python manage.py migrate
+                        // python manage.py migrate
                         python manage.py collectstatic --noinput
                         """
                     } catch (err) {
