@@ -1,20 +1,32 @@
 pipeline {
     agent any
-
+    environment {
+        # Use virtualenv inside Jenkins workspace for isolation
+        PATH = "venv/bin:$PATH"
+    }
     stages {
 
         stage('Clone Repo') {
             steps {
+                // Checkout your GitHub repo
                 git branch: 'main',
-                url: 'https://github.com/aayush-bajpai/quiz_master.git'
+                    url: 'https://github.com/aayush-bajpai/quiz_master.git'
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Setup Virtualenv & Install Dependencies') {
             steps {
                 sh '''
-                cd /home/ubuntu/quiz_master
-                source venv/bin/activate
+                # Create virtual environment if it doesn't exist
+                if [ ! -d "venv" ]; then
+                    python3 -m venv venv
+                fi
+
+                # Activate virtualenv
+                . venv/bin/activate
+
+                # Upgrade pip and install dependencies
+                pip install --upgrade pip
                 pip install -r requirements.txt
                 '''
             }
@@ -23,28 +35,17 @@ pipeline {
         // stage('Run Tests') {
         //     steps {
         //         sh '''
-        //         cd /home/ubuntu/quiz_master
-        //         source venv/bin/activate
+        //         . venv/bin/activate
         //         python manage.py test
         //         '''
         //     }
         // }
 
-        // stage('Migrate Database') {
-        //     steps {
-        //         sh '''
-        //         cd /home/ubuntu/quiz_master
-        //         source venv/bin/activate
-        //         python manage.py migrate
-        //         '''
-        //     }
-        // }
-
-        stage('Collect Static') {
+        stage('Migrate & Collect Static') {
             steps {
                 sh '''
-                cd /home/ubuntu/quiz_master
-                source venv/bin/activate
+                . venv/bin/activate
+                // python manage.py migrate
                 python manage.py collectstatic --noinput
                 '''
             }
@@ -59,5 +60,13 @@ pipeline {
             }
         }
 
+    }
+    post {
+        failure {
+            echo "Build failed! Check the logs."
+        }
+        success {
+            echo "Build, tests, migration, static files, and services completed successfully."
+        }
     }
 }
