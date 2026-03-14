@@ -1,72 +1,84 @@
 pipeline {
     agent any
     environment {
-        // # Use virtualenv inside Jenkins workspace for isolation
-        PATH = "venv/bin:$PATH"
+        VENV_PATH = "/home/ubuntu/quiz_master/venv"
+        PROJECT_DIR = "/home/ubuntu/quiz_master"
+        PATH = "${VENV_PATH}/bin:$PATH"
     }
+
     stages {
 
         stage('Clone Repo') {
             steps {
-                // Checkout your GitHub repo
                 git branch: 'main',
                     url: 'https://github.com/aayush-bajpai/quiz_master.git'
             }
         }
 
-        stage('Setup Virtualenv & Install Dependencies') {
+        stage('Install Dependencies') {
             steps {
-                sh '''
-                # Create virtual environment if it doesn't exist
-                if [ ! -d "venv" ]; then
-                    python3 -m venv venv
-                fi
-
-                # Activate virtualenv
-                . venv/bin/activate
-
-                # Upgrade pip and install dependencies
+                sh """
+                . ${VENV_PATH}/bin/activate
                 pip install --upgrade pip
-                pip install -r requirements.txt
-                '''
+                pip install -r ${PROJECT_DIR}/requirements.txt
+                """
             }
         }
 
-        // stage('Run Tests') {
-        //     steps {
-        //         sh '''
-        //         . venv/bin/activate
-        //         python manage.py test
-        //         '''
-        //     }
-        // }
+        stage('Run Tests') {
+            steps {
+                sh """
+                . ${VENV_PATH}/bin/activate
+                cd ${PROJECT_DIR}
+                python manage.py test
+                """
+            }
+        }
 
         stage('Migrate & Collect Static') {
             steps {
-                sh '''
-                . venv/bin/activate
-                // python manage.py migrate
-                python manage.py collectstatic --noinput
-                '''
+                script {
+                    try {
+                        sh """
+                        . ${VENV_PATH}/bin/activate
+                        cd ${PROJECT_DIR}
+                        python manage.py migrate
+                        python manage.py collectstatic --noinput
+                        """
+                    } catch (err) {
+                        // Rollback on failure
+                        echo "Migration or static collection failed. Rolling back..."
+                        sh """
+                        cd ${PROJECT_DIR}
+                        git reset --hard HEAD~1
+                        sudo supervisorctl restart guni:*
+                        sudo systemctl restart nginx
+                        """
+                        error("Pipeline failed and rollback executed!")
+                    }
+                }
             }
         }
 
         stage('Restart Services') {
             steps {
-                sh '''
+                sh """
                 sudo supervisorctl restart guni:*
                 sudo systemctl restart nginx
-                '''
+                """
             }
         }
-
     }
+
     post {
         failure {
             echo "Build failed! Check the logs."
+            // Optional: send email or Slack notification
+            // emailext to: 'you@example.com', subject: 'CI/CD Pipeline Failed', body: 'Check Jenkins logs'
         }
         success {
-            echo "Build, tests, migration, static files, and services completed successfully."
+            echo "Pipeline completed successfully!"
+            // Optional: send success notification
         }
     }
 }
