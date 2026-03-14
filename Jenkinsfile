@@ -50,13 +50,10 @@ pipeline {
 
         stage('Restart Services') {
             steps {
-                sh """
-                # Jenkins can now restart services without password
-                sudo supervisorctl restart guni:*
-                sudo systemctl restart nginx
-                """
+                sh "sudo /usr/local/bin/restart_quiz_services.sh"
             }
         }
+
     }
 
     post {
