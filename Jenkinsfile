@@ -1,12 +1,13 @@
 pipeline {
     agent any
     environment {
-        VENV_PATH = "${WORKSPACE}/venv"
-        PROJECT_DIR = "${WORKSPACE}"
+        VENV_PATH = "/home/ubuntu/venv"
+        PROJECT_DIR = "/home/ubuntu/quiz_master"
         PATH = "${VENV_PATH}/bin:$PATH"
     }
 
     stages {
+
         stage('Clone Repo') {
             steps {
                 git branch: 'main',
@@ -17,7 +18,8 @@ pipeline {
         stage('Setup Virtualenv & Install Dependencies') {
             steps {
                 sh """
-                python3 -m venv ${VENV_PATH}
+                # Create venv if not exists
+                [ ! -d ${VENV_PATH} ] && python3 -m venv ${VENV_PATH}
                 . ${VENV_PATH}/bin/activate
                 pip install --upgrade pip
                 pip install -r ${PROJECT_DIR}/requirements.txt
@@ -25,12 +27,22 @@ pipeline {
             }
         }
 
+        // stage('Run Tests') {
+        //     steps {
+        //         sh """
+        //         . ${VENV_PATH}/bin/activate
+        //         cd ${PROJECT_DIR}
+        //         python manage.py test
+        //         """
+        //     }
+        // }
+
         stage('Migrate & Collect Static') {
             steps {
                 sh """
                 . ${VENV_PATH}/bin/activate
                 cd ${PROJECT_DIR}
-                python manage.py migrate
+                // python manage.py migrate
                 python manage.py collectstatic --noinput
                 """
             }
@@ -39,10 +51,20 @@ pipeline {
         stage('Restart Services') {
             steps {
                 sh """
+                # Jenkins can now restart services without password
                 sudo supervisorctl restart guni:*
                 sudo systemctl restart nginx
                 """
             }
+        }
+    }
+
+    post {
+        failure {
+            echo "Build failed! Check the logs."
+        }
+        success {
+            echo "Pipeline completed successfully!"
         }
     }
 }
